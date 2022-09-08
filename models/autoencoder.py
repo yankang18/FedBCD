@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from base_model import BaseModel
+from models.base_model import BaseModel
 
 
 class Autoencoder(BaseModel):
