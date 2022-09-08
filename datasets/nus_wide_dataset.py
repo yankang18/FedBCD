@@ -199,7 +199,8 @@ def prepare_party_data(src_data_folder, des_data_folder, selected_labels, neg_la
     for test_data, test_data_name in zip(test_data_list, test_data_file_name_list):
         print("{0} shape: {1}".format(test_data_name, test_data.shape))
 
-    ext = "vfl_cnn_lr_00001_async_True_L_33_B_256_R_140_20190820155141_3.csv"
+    # ext = "vfl_cnn_lr_00001_async_True_L_33_B_256_R_140_20190820155141_3.csv"
+    ext = ".csv"
     train_data_full_name_list = [des_data_folder + file_name + ext for file_name in train_data_file_name_list]
     test_data_full_name_list = [des_data_folder + file_name + ext for file_name in test_data_file_name_list]
 
@@ -256,7 +257,10 @@ def load_prepared_parties_data(data_dir, sel_lbls, load_three_party):
 
 
 if __name__ == '__main__':
+
     data_dir = "../../data/"
+    # if not os.path.exists(data_dir):
+    #     os.mkdir(data_dir)
 
     # sel = get_top_k_labels(data_dir=data_dir, top_k=10)
     # print("sel", sel)
