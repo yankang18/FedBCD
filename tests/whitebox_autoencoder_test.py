@@ -1,10 +1,7 @@
-import matplotlib.pyplot as plt
-import tensorflow as tf
-from sklearn.utils import shuffle
 import numpy as np
-import pandas as pd
+import tensorflow as tf
 
-from federated_learning.autoencoder import Autoencoder
+from models.autoencoder import Autoencoder
 
 
 def test_func():

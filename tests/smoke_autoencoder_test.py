@@ -4,7 +4,7 @@ from sklearn.utils import shuffle
 import numpy as np
 import pandas as pd
 
-from federated_learning.autoencoder import Autoencoder
+from models.autoencoder import Autoencoder
 
 
 def getKaggleMNIST():

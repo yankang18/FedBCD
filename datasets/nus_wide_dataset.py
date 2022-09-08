@@ -69,7 +69,8 @@ def get_labeled_data_with_2_party(data_dir, selected_labels, n_samples, dtype="T
 
 
 def get_labeled_data_with_3_party(data_dir, selected_labels, n_samples, dtype="Train"):
-    Xa, Xb, Y = get_labeled_data_with_2_party(data_dir=data_dir, selected_labels=selected_labels, n_samples=n_samples, dtype=dtype)
+    Xa, Xb, Y = get_labeled_data_with_2_party(data_dir=data_dir, selected_labels=selected_labels, n_samples=n_samples,
+                                              dtype=dtype)
     n_tags = Xb.shape[1]
     half_n_tags = int(0.5 * n_tags)
     return Xa, Xb[:, :half_n_tags], Xb[:, half_n_tags:], Y
@@ -111,7 +112,7 @@ def load_two_party_data(data_dir, selected_labels, neg_label=-1, n_samples=-1):
     print("# of train samples:", n_train)
     # print("# of test samples:", n_test)
 
-    Xa_train ,Xb_train = Xa[:n_train], Xb[:n_train]
+    Xa_train, Xb_train = Xa[:n_train], Xb[:n_train]
     Xa_test, Xb_test = Xa[n_train:], Xb[n_train:]
     y_train, y_test = y[:n_train], y[n_train:]
 
@@ -164,7 +165,7 @@ def load_three_party_data(data_dir, selected_labels, neg_label=-1, n_samples=-1)
     print("# of train samples:", n_train)
     # print("# of test samples:", n_test)
 
-    Xa_train ,Xb_train, Xc_train = Xa[:n_train], Xb[:n_train], Xc[:n_train]
+    Xa_train, Xb_train, Xc_train = Xa[:n_train], Xb[:n_train], Xc[:n_train]
     Xa_test, Xb_test, Xc_test = Xa[n_train:], Xb[n_train:], Xc[n_train:]
     y_train, y_test = y[:n_train], y[n_train:]
 
@@ -278,4 +279,3 @@ if __name__ == '__main__':
         os.mkdir(folder_full_name)
     prepare_party_data(src_data_folder=data_dir, des_data_folder=folder_full_name, selected_labels=sel_lbls,
                        neg_label=0, n_samples=20000, is_three_party=prepare_three_party)
-

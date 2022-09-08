@@ -92,4 +92,3 @@ def load_vertical_medical_data(data_dir, training_sample_rate=0.8):
     Xc_train, Xc_test = Xc[:num_train], Xc[num_train:]
 
     return (Xa_train, Xb_train, Xc_train, Y_train), (Xa_test, Xb_test, Xc_test, Y_test)
-

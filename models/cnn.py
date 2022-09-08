@@ -3,6 +3,7 @@ from typing import List
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
+
 from base_model import BaseModel
 
 
@@ -533,7 +534,6 @@ class SimpleCNN(BaseModel):
         # the training operations are waiting for batch normalization to be computed
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS, scope=conv_layer_vars_scope)
         with tf.control_dependencies(update_ops):
-
             loss1 = self.feature_representation
             self.back_train_op_1 = tf.train.AdamOptimizer(learning_rate=self.lr).minimize(
                 loss=loss1,
@@ -639,4 +639,3 @@ class ActivationLayerFactory(object):
         else:
             raise TypeError("does not support {} activation".format(activation_type))
         return layer
-

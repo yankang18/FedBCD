@@ -1,5 +1,5 @@
 import numpy as np
-from federated_learning.model import BaseModel
+from models.base_model import BaseModel
 
 
 class FakeAutoencoder(BaseModel):

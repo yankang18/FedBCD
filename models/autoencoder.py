@@ -1,6 +1,7 @@
-import tensorflow as tf
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import tensorflow as tf
+
 from models.base_model import BaseModel
 
 
@@ -161,17 +162,19 @@ class Autoencoder(BaseModel):
                 raise Exception("proximal should be provided but is None")
             print("## autoencoder apply proximal")
 
-            _, _, repr_training_reg_loss = self.sess.run([self.train_op_2, self.enc_reg_op, self.repr_training_reg_loss],
-                                                         feed_dict={self.X_in: X,
-                                                                    self.init_grad: in_grad,
-                                                                    self.proximal_Wh: proximal,
-                                                                    self.batch_size: X.shape[0]})
+            _, _, repr_training_reg_loss = self.sess.run(
+                [self.train_op_2, self.enc_reg_op, self.repr_training_reg_loss],
+                feed_dict={self.X_in: X,
+                           self.init_grad: in_grad,
+                           self.proximal_Wh: proximal,
+                           self.batch_size: X.shape[0]})
         else:
             print("## autoencoder does not apply proximal")
-            _, _, repr_training_reg_loss = self.sess.run([self.train_op_1, self.enc_reg_op, self.repr_training_reg_loss],
-                                                         feed_dict={self.X_in: X,
-                                                                    self.init_grad: in_grad,
-                                                                    self.batch_size: X.shape[0]})
+            _, _, repr_training_reg_loss = self.sess.run(
+                [self.train_op_1, self.enc_reg_op, self.repr_training_reg_loss],
+                feed_dict={self.X_in: X,
+                           self.init_grad: in_grad,
+                           self.batch_size: X.shape[0]})
         return repr_training_reg_loss
 
     def predict(self, X):
@@ -198,4 +201,3 @@ class Autoencoder(BaseModel):
         if show_fig:
             plt.plot(costs)
             plt.show()
-

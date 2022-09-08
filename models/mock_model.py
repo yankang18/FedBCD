@@ -21,6 +21,3 @@ class MockModel(BaseModel):
 
     def get_features_dim(self):
         return self.hidden_dim
-
-
-

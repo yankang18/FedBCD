@@ -1,6 +1,5 @@
-from federated_learning.plain_ftl import PlainFTLGuestModel, PlainFTLHostModel
-from federated_learning.encrypted_ftl import EncryptedFTLGuestModel, EncryptedFTLHostModel
-from federated_learning.tests.fake_models import FakeAutoencoder
+from plain_ftl import PlainFTLGuestModel, PlainFTLHostModel
+from tests.fake_models import FakeAutoencoder
 
 import numpy as np
 
@@ -48,7 +47,7 @@ def msg_exchange_text():
     partyB.receive_components([comp_A_beta1, comp_A_beta2, mapping_comp_A])
 
 
-def run_one_party_msg_exchange(autoencoderA, autoencoderB, U_A, U_B, y, overlap_indexes, non_overlap_indexes, public_key=None, private_key=None, is_encrypted=False):
+def run_one_party_msg_exchange(autoencoderA, autoencoderB, U_A, U_B, y, overlap_indexes, non_overlap_indexes):
     """
 
     :param autoencoderA:
@@ -58,20 +57,14 @@ def run_one_party_msg_exchange(autoencoderA, autoencoderB, U_A, U_B, y, overlap_
     :param y:
     :param overlap_indexes:
     :param non_overlap_indexes:
-    :param public_key:
-    :param is_encrypted:
+
     :return:
     """
-    if is_encrypted:
-        partyA = EncryptedFTLGuestModel(autoencoderA, 1, public_key=public_key, private_key=private_key)
-        partyA.set_batch(U_A, y, non_overlap_indexes, overlap_indexes)
-        partyB = EncryptedFTLHostModel(autoencoderB, 1, public_key=public_key, private_key=private_key)
-        partyB.set_batch(U_B, overlap_indexes)
-    else:
-        partyA = PlainFTLGuestModel(autoencoderA, 1)
-        partyA.set_batch(U_A, y, non_overlap_indexes, overlap_indexes)
-        partyB = PlainFTLHostModel(autoencoderB, 1)
-        partyB.set_batch(U_B, overlap_indexes)
+
+    partyA = PlainFTLGuestModel(autoencoderA, 1)
+    partyA.set_batch(U_A, y, non_overlap_indexes, overlap_indexes)
+    partyB = PlainFTLHostModel(autoencoderB, 1)
+    partyB.set_batch(U_B, overlap_indexes)
 
     comp_A_beta1, comp_A_beta2, mapping_comp_A = partyA.send_components()
 
