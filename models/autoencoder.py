@@ -11,21 +11,24 @@ class Autoencoder(BaseModel):
         super(Autoencoder, self).__init__()
         self.id = str(an_id)
 
+    def get_ID(self):
+        return self.id
+
     def set_session(self, sess):
         self.sess = sess
 
-    def build(self, input_dim, hidden_dim, learning_rate=1e-2, lbda=0.01, proximal_lbda=1.0):
+    def build(self, input_dim, hidden_dim, learning_rate=1e-2, reg_lbda=0.01, proximal_lbda=1.0):
         """
         :param input_dim: the dimension of input
         :param hidden_dim: the dimension of hidden layer
         :param learning_rate: the learning rate
-        :param lbda: the regularization factor
+        :param reg_lbda: the regularization factor
         :param proximal_lbda: the lambda parameter for proximal loss
         :return:
         """
 
         self.lr = learning_rate
-        self.lbda = lbda
+        self.lbda = reg_lbda
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.proximal_lbda = proximal_lbda
@@ -160,7 +163,7 @@ class Autoencoder(BaseModel):
         if apply_proximal:
             if proximal is None:
                 raise Exception("proximal should be provided but is None")
-            print("## autoencoder apply proximal")
+            # print("## autoencoder apply proximal")
 
             _, _, repr_training_reg_loss = self.sess.run(
                 [self.train_op_2, self.enc_reg_op, self.repr_training_reg_loss],
@@ -169,7 +172,7 @@ class Autoencoder(BaseModel):
                            self.proximal_Wh: proximal,
                            self.batch_size: X.shape[0]})
         else:
-            print("## autoencoder does not apply proximal")
+            # print("## autoencoder does not apply proximal")
             _, _, repr_training_reg_loss = self.sess.run(
                 [self.train_op_1, self.enc_reg_op, self.repr_training_reg_loss],
                 feed_dict={self.X_in: X,

@@ -221,7 +221,7 @@ def get_timestamp():
 
 def save_result(*, file_full_name, loss_records, metric_one_records, metric_two_records, spend_time_records=None):
     file_full_name = file_full_name + ".csv"
-    print("save result to {0}".format(file_full_name))
+    print("[INFO] save experimental results to {0}".format(file_full_name))
     with open(file_full_name, 'w', newline='') as myfile:
         wr = csv.writer(myfile, quoting=csv.QUOTE_ALL)
         for loss_list in loss_records:
@@ -294,13 +294,7 @@ def plot_result(lengend_list, loss_records, metric_test_records, metric_train_re
 
 def compute_experimental_result_file_name(n_local, batch_size, comm_rounds):
     local_epochs = "L_" + str(n_local)
-    batch_size = "B_" + str(batch_size)
-    comm_rounds = "R_" + str(comm_rounds)
-    return local_epochs + "_" + batch_size + "_" + comm_rounds
-
-
-if __name__ == '__main__':
-    # X,y = load_data()
-    # load_data()
-    a = np.setdiff1d([1, 2, 3, 2], [2])
-    print(a)
+    return local_epochs
+    # batch_size = "B_" + str(batch_size)
+    # comm_rounds = "R_" + str(comm_rounds)
+    # return local_epochs + "_" + batch_size + "_" + comm_rounds

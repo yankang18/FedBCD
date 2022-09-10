@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.ops import init_ops
 
-from base_model import BaseModel
+from models.base_model import BaseModel
 
 
 class Layer(object):
@@ -384,8 +384,8 @@ class SimpleCNN(BaseModel):
         proximal_placeholder_collection.append(self.repr_proximal_placeholder)
         proximal_placeholder_collection.append(self.logits_proximal_placeholder)
         for layer in self.layers:
-            print("layer", layer)
-            print("layer.can_apply_proximal()", layer.can_apply_proximal())
+            # print("layer", layer)
+            # print("layer.can_apply_proximal()", layer.can_apply_proximal())
             if layer.can_apply_proximal():
                 proximal_difference = layer.compute_difference_to_proximal()
                 proximal_placeholder = layer.get_proximal_placeholder()
@@ -564,13 +564,13 @@ class SimpleCNN(BaseModel):
         if apply_proximal:
             if proximal_param_collection is None:
                 raise Exception("proximal should be provided but is None")
-            print("## cnn apply proximal")
+            # print("## cnn apply proximal")
             feed_dictionary = {self.inputs: X, self.is_training: True, self.init_grad: in_grad}
             for placeholder, param in zip(self.proximal_placeholder_collection, proximal_param_collection):
                 feed_dictionary[placeholder] = param
             self.session.run(self.back_train_op_2, feed_dict=feed_dictionary)
         else:
-            print("## cnn does not apply proximal")
+            # print("## cnn does not apply proximal")
             self.session.run(self.back_train_op_1,
                              feed_dict={self.inputs: X, self.is_training: True, self.init_grad: in_grad})
 
@@ -613,13 +613,13 @@ class LayerFactory(object):
     def create(cls, layer_meta):
         layer_type = layer_meta["layer_type"]
         if layer_type is "convolution":
-            print("add convolution layer:", )
+            print("[INFO] add convolution layer:", )
             layer = ConvolutionLayer()
         elif layer_type is "max_pooling":
-            print("add max_pooling layer")
+            print("[INFO] add max_pooling layer")
             layer = MaxPoolingLayer()
         elif layer_type is "batch_normalization":
-            print("add batch_normalization layer")
+            print("[INFO] add batch_normalization layer")
             layer = BatchNormalizationLayer()
         elif layer_type is "activation":
             layer = ActivationLayerFactory.create(layer_meta)
@@ -634,7 +634,7 @@ class ActivationLayerFactory(object):
     def create(cls, layer_meta):
         activation_type = layer_meta["activation_type"]
         if activation_type is "relu":
-            print("add relu activation layer:", )
+            print("[INFO] add relu activation layer:", )
             layer = ReluActivationLayer()
         else:
             raise TypeError("does not support {} activation".format(activation_type))

@@ -8,3 +8,6 @@ class BaseModel(object):
 
     def set_session(self, sess):
         self.sess = sess
+
+    def get_ID(self):
+        return 0

@@ -1,53 +1,9 @@
-import os
-import sys
-
-import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import roc_auc_score
 
 from datasets.data_util import convert_to_pos_neg_labels
-from datasets.data_util import get_timestamp, save_result, compute_experimental_result_file_name
-from vfl import VerticalMultiplePartyLogisticRegressionFederatedLearning
-
-home_dir = os.path.split(os.path.realpath(__file__))[0]
-sys.path.append(os.path.join(home_dir))
-
-
-class FederatedLearningExperimentResult(object):
-    def __init__(self, result_dict):
-        self.result_dict = result_dict
-
-    def get_epochs(self):
-        return self.result_dict["epochs"]
-
-    def is_parallel(self):
-        return self.result_dict["is_parallel"]
-
-    def get_global_step(self):
-        return self.result_dict["global_step"]
-
-    def get_recording_step(self):
-        return self.result_dict["recording_step"]
-
-    def get_loss_list(self):
-        return self.result_dict["loss_list"]
-
-    def get_running_time_list(self):
-        return self.result_dict["running_time_list"]
-
-    def get_acc_list(self):
-        return self.result_dict["metrics"]["acc_list"]
-
-    def get_auc_list(self):
-        return self.result_dict["metrics"]["auc_list"]
-
-    def get_batch_size(self):
-        return self.result_dict["batch_size"]
-
-    def get_local_iteration_list(self):
-        return self.result_dict["local_iteration_list"]
+from vfl import VerticalMultiplePartyFederatedLearning
 
 
 def compute_correct_prediction(*, y_targets, y_prob_preds, threshold=0.5):
@@ -69,50 +25,12 @@ def compute_correct_prediction(*, y_targets, y_prob_preds, threshold=0.5):
     return np.array(y_hat_lbls), [pred_pos_count, pred_neg_count, correct_count]
 
 
-def save_vfl_experiment_result(output_directory, task_name, experiment_result: FederatedLearningExperimentResult):
-    local_iter_list = experiment_result.get_local_iteration_list()
-    batch_size = experiment_result.get_batch_size()
-    recording_step = experiment_result.get_recording_step()
-    loss_list = experiment_result.get_loss_list()
-    running_time_list = experiment_result.get_running_time_list()
-    acc_list = experiment_result.get_acc_list()
-    auc_list = experiment_result.get_auc_list()
-    is_parallel = experiment_result.is_parallel()
-
-    local_iterations = str(local_iter_list[0])
-    for party_idx, n_iter in enumerate(local_iter_list):
-        if party_idx != 0:
-            local_iterations += "_" + str(local_iter_list[party_idx])
-
-    loss_records = list()
-    spend_time_records = list()
-    acc_records = list()
-    auc_records = list()
-    loss_records.append(loss_list)
-    spend_time_records.append(running_time_list)
-    acc_records.append(acc_list)
-    auc_records.append(auc_list)
-
-    timestamp = get_timestamp()
-    file_name = compute_experimental_result_file_name(n_local=local_iterations,
-                                                      batch_size=batch_size,
-                                                      comm_rounds=recording_step)
-
-    output_full_dir = home_dir + output_directory + "/"
-    output_file_full_name = output_full_dir + task_name + "_parallel_" + str(is_parallel) + "_" + file_name + "_" + timestamp
-    save_result(file_full_name=output_file_full_name,
-                loss_records=loss_records,
-                metric_one_records=acc_records,
-                metric_two_records=auc_records,
-                spend_time_records=spend_time_records)
-
-
 class FederatedLearningFixture(object):
 
-    def __init__(self, federated_learning: VerticalMultiplePartyLogisticRegressionFederatedLearning):
+    def __init__(self, federated_learning: VerticalMultiplePartyFederatedLearning):
         self.federated_learning = federated_learning
 
-    def fit(self, train_data, test_data, is_parallel, epochs=50, batch_size=-1, show_fig=True):
+    def fit(self, train_data, test_data, epochs=50, batch_size=-1, is_parallel=True, verbose=False, is_debug=False):
 
         # TODO: add early stopping
         main_party_id = self.federated_learning.get_main_party_id()
@@ -120,15 +38,12 @@ class FederatedLearningFixture(object):
         y_train = train_data[main_party_id]["Y"]
         Xa_test = test_data[main_party_id]["X"]
         y_test = test_data[main_party_id]["Y"]
-        # Xa_train, Xb_train, y_train = train_data
-        # Xa_test, Xb_test, y_test = test_data
 
-        # only labels for training should be converted to {-1, 1}
-
+        # only training labels should be converted to {-1, 1}
         y_train_cvted = convert_to_pos_neg_labels(y_train.flatten())
-        print("y_train_cvted1: {0}".format(y_train_cvted.shape))
+        if is_debug: print("[DEBUG] y_train_cvted1: {0}".format(y_train_cvted.shape))
         y_train_cvted = np.expand_dims(y_train_cvted, axis=1)
-        print("y_train_cvted2: {0}".format(y_train_cvted.shape))
+        if is_debug: print("[DEBUG] y_train_cvted2: {0}".format(y_train_cvted.shape))
 
         N = Xa_train.shape[0]
         residual = N % batch_size
@@ -137,12 +52,9 @@ class FederatedLearningFixture(object):
         else:
             n_batches = N // batch_size + 1
 
-        print("number of samples:", N)
-        print("batch size:", batch_size)
-        print("number of batches:", n_batches)
+        print("[INFO] number of samples:{}; batch size:{}; number of batches:{}.", N, batch_size, n_batches)
 
         global_step = -1
-        # the period in terms of global step to record information such as loss, accuracy and AUC
         recording_period = 1
         recording_step = -1
         threshold = 0.5
@@ -156,6 +68,7 @@ class FederatedLearningFixture(object):
             acc_list = []
             auc_list = []
             for ep in range(epochs):
+                # global_step += 1
                 for batch_idx in range(n_batches):
                     global_step += 1
 
@@ -168,10 +81,12 @@ class FederatedLearningFixture(object):
                                                              batch_idx * batch_size: batch_idx * batch_size + batch_size]
 
                     if is_parallel:
+                        if verbose: print("[INFO] fit using parallel scheme")
                         loss, running_time = self.federated_learning.fit_parallel(Xa_batch, Y_batch,
                                                                                   party_X_train_batch_dict,
                                                                                   global_step)
                     else:
+                        if verbose: print("[INFO] fit using sequential scheme")
                         loss, running_time = self.federated_learning.fit(Xa_batch, Y_batch,
                                                                          party_X_train_batch_dict,
                                                                          global_step)
@@ -192,28 +107,15 @@ class FederatedLearningFixture(object):
                         auc = roc_auc_score(y_test, y_prob_preds, average="weighted")
                         acc_list.append(acc)
                         auc_list.append(auc)
-                        print("--- Validation: ---")
-                        print("--- neg：", pred_neg_count, "pos:", pred_pos_count)
-                        print("--- num of correct:", correct_count)
-                        print("--- epoch: {0}, batch: {1}, loss: {2}, acc: {3}, auc: {4}"
-                              .format(ep, batch_idx, loss, acc, auc))
-                        print("---", precision_recall_fscore_support(y_test, y_hat_lbls, average="weighted"))
-
-            if show_fig:
-                plt.subplot(131)
-                plt.plot(loss_list)
-                plt.xlabel("loss")
-                plt.subplot(132)
-                plt.plot(acc_list)
-                plt.xlabel("accuracy")
-                plt.subplot(133)
-                plt.plot(auc_list)
-                plt.xlabel("auc")
-                plt.show()
-
-            print("loss : {0}".format(loss_list))
-            print("acc : {0}".format(acc_list))
-            print("auc : {0}".format(auc_list))
+                        # print("--- Validation: ---")
+                        # print("--- neg：", pred_neg_count, "pos:", pred_pos_count)
+                        # print("--- num of correct:", correct_count)
+                        print("=== epoch: {0}, batch: {1}, loss: {2}, acc: {3}, auc: {4}".format(ep,
+                                                                                                 batch_idx,
+                                                                                                 loss,
+                                                                                                 acc,
+                                                                                                 auc))
+                        # print("---", precision_recall_fscore_support(y_test, y_hat_lbls, average="weighted"))
 
             result_dict = dict()
             result_dict["epochs"] = epochs
@@ -228,4 +130,4 @@ class FederatedLearningFixture(object):
             result_dict["metrics"]["acc_list"] = acc_list
             result_dict["metrics"]["auc_list"] = auc_list
 
-            return FederatedLearningExperimentResult(result_dict)
+            return result_dict

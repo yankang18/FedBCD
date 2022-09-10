@@ -2,10 +2,11 @@ import tensorflow as tf
 
 from models.autoencoder import Autoencoder
 from datasets.data_util import load_data, split_data_combined
+import config
 
 if __name__ == '__main__':
 
-    infile = "./datasets/UCI_Credit_Card/UCI_Credit_Card.csv"
+    infile = config.data_dir + "UCI_Credit_Card/UCI_Credit_Card.csv"
     X, y = load_data(infile=infile, balanced=True)
 
     print("################################ Generate Data for Two Parties ############################")

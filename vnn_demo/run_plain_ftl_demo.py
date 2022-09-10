@@ -1,15 +1,15 @@
-
 import numpy as np
 import tensorflow as tf
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 
-from models.autoencoder import Autoencoder
+import config
 from datasets.data_util import load_data, split_data_combined, series_plot
+from models.autoencoder import Autoencoder
 from plain_ftl import PlainFTLHostModel, PlainFTLGuestModel, LocalPlainFederatedTransferLearning
 
 if __name__ == '__main__':
 
-    infile = "../datasets/UCI_Credit_Card/UCI_Credit_Card.csv"
+    infile = config.data_dir + "UCI_Credit_Card/UCI_Credit_Card.csv"
     X, y = load_data(infile=infile, balanced=True)
 
     X_A, y_A, X_B, y_B, overlap_indexes = split_data_combined(X, y,

@@ -2,13 +2,13 @@ import numpy as np
 import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
-from sklearn.utils import shuffle
 
 from datasets.nus_wide_dataset import load_prepared_parties_data
 from models.autoencoder import Autoencoder
-from vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyLogisticRegressionFederatedLearning
+from models.learning_rate_decay import sqrt_learning_rate_decay
+from vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
 from vnn_demo.vfl_fixture import FederatedLearningFixture
-from vnn_demo.vfl_fixture import save_vfl_experiment_result
+from store_utils import save_experimental_results
 
 
 def benchmark_test(X_train, X_test, y_train, y_test, party_name=""):
@@ -41,15 +41,17 @@ def balance_X_y(X, y, seed=5):
 
 
 def run_experiment(train_data, test_data, output_directory_name, n_local, batch_size, learning_rate, epoch, is_parallel,
-                   apply_proximal=False, proximal_lbda=0.1, show_fig=True):
+                   apply_proximal=False, proximal_lbda=0.1, is_debug=False, verbose=False, show_fig=True):
     print("hyper-parameters:")
     print("# of local iterations: {0}".format(n_local))
     print("batch size: {0}".format(batch_size))
     print("learning rate: {0}".format(learning_rate))
-    print("show figure: {0}".format(show_fig))
     print("is async {0}".format(is_parallel))
     print("apply proximal {0}".format(apply_proximal))
     print("proximal lbda {0}".format(proximal_lbda))
+    print("show figure: {0}".format(show_fig))
+    print("is debug: {0}".format(is_debug))
+    print("verbose: {0}".format(verbose))
 
     Xa_train, Xb_train, y_train = train_data
     Xa_test, Xb_test, y_test = test_data
@@ -61,19 +63,26 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
     autoencoder_A = Autoencoder(1)
     autoencoder_B = Autoencoder(2)
 
-    autoencoder_A.build(input_dim=Xa_train.shape[1], hidden_dim=50, lbda=0.1,
-                        learning_rate=learning_rate, proximal_lbda=proximal_lbda)
-    autoencoder_B.build(input_dim=Xb_train.shape[1], hidden_dim=30, lbda=0.1,
-                        learning_rate=learning_rate, proximal_lbda=proximal_lbda)
+    autoencoder_A.build(input_dim=Xa_train.shape[1], hidden_dim=50, reg_lbda=0.1, learning_rate=learning_rate,
+                        proximal_lbda=proximal_lbda)
+    autoencoder_B.build(input_dim=Xb_train.shape[1], hidden_dim=30, reg_lbda=0.1, learning_rate=learning_rate,
+                        proximal_lbda=proximal_lbda)
 
-    partyA = VFLGuestModel(local_model=autoencoder_A, n_iter=n_local, learning_rate=learning_rate, lbda=0.01,
-                           is_ave=False,
-                           optimizer="rmsprop", apply_proximal=apply_proximal, proximal_lbda=proximal_lbda)
-    partyB = VFLHostModel(local_model=autoencoder_B, n_iter=n_local, learning_rate=learning_rate, lbda=0.01,
-                          optimizer="rmsprop", apply_proximal=apply_proximal, proximal_lbda=proximal_lbda)
+    (guest_n_local, host_n_local) = n_local
+    partyA = VFLGuestModel(local_model=autoencoder_A, n_iter=guest_n_local, learning_rate=learning_rate, reg_lbda=0.01,
+                           apply_proximal=apply_proximal, proximal_lbda=proximal_lbda, is_debug=is_debug,
+                           verbose=verbose)
+    partyB = VFLHostModel(local_model=autoencoder_B, n_iter=host_n_local, learning_rate=learning_rate, reg_lbda=0.01,
+                          apply_proximal=apply_proximal, proximal_lbda=proximal_lbda, is_debug=is_debug,
+                          verbose=verbose)
+
+    using_learning_rate_decay = False
+    if using_learning_rate_decay:
+        partyA.set_learning_rate_decay_func(sqrt_learning_rate_decay)
+        partyB.set_learning_rate_decay_func(sqrt_learning_rate_decay)
 
     party_B_id = "B"
-    federatedLearning = VerticalMultiplePartyLogisticRegressionFederatedLearning(partyA)
+    federatedLearning = VerticalMultiplePartyFederatedLearning(partyA)
     federatedLearning.add_party(id=party_B_id, party_model=partyB)
 
     print("################################ Train Federated Models ############################")
@@ -91,21 +100,19 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
                                        is_parallel=is_parallel,
                                        epochs=epoch,
                                        batch_size=batch_size,
-                                       show_fig=show_fig)
+                                       is_debug=is_debug,
+                                       verbose=verbose)
 
     if output_directory_name is not None:
-        output_directory_full_name = "/result/" + output_directory_name
         task_name = "vfl_aue"
-        save_vfl_experiment_result(output_directory=output_directory_full_name,
-                                   task_name=task_name,
-                                   experiment_result=experiment_result)
+        save_experimental_results(experiment_result, output_directory_name, task_name, show_fig)
 
 
 if __name__ == '__main__':
 
     print("################################ Prepare Data ############################")
     for_three_party = False
-    data_dir = "../../data/"
+    data_dir = "../data/"
     # class_lbls = ['person', 'water', 'animal', 'grass', 'buildings']
     # class_lbls = ['sky', 'clouds', 'person', 'water']
     class_lbls = ['person', 'animal']
@@ -115,8 +122,8 @@ if __name__ == '__main__':
     Xa_train, Xb_train, y_train = train
     Xa_test, Xb_test, y_test = test
 
-    print("pos lbls train", sum(y_train), len(y_train))
-    print("pos lbls test", sum(y_test), len(y_test))
+    print("[INFO] pos lbls train", sum(y_train), len(y_train))
+    print("[INFO] pos lbls test", sum(y_test), len(y_test))
 
     print("################################ Run Benchmark Models ############################")
 
@@ -133,33 +140,37 @@ if __name__ == '__main__':
 
     print("################################ Build Federated Models ############################")
 
+    output_dir_name = "/vnn_demo/result/auc_two_party/"
     n_experiments = 1
-    apply_proximal = False
-    proximal_lbda = 1.0
+    apply_proximal = True
+    proximal_lbda = 3.0
     batch_size = 256
-    epoch = 20
-    # lr_list = [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2]
-    # lr_list = [0.1]
-    lr_list = [0.1]
-    is_parallel_list = [True]
-    n_local_iter_list = [1]
+    epoch = 10
 
-    appendix = "_ep_" + str(epoch)
-    appendix += "_w_proximal" if apply_proximal else "_wo_proximal"
-    # folder_name = folder_name + "_bz_" + str(batch_size) + appendix
-    # print("destination folder_name: {0}".format(folder_name))
+    is_debug = False
+    verbose = False
+    show_fig = False
+
+    is_parallel_list = [True]
+
+    # lr_list = [0.003]
+    # n_local_iter_list = [(1, 1)]  # [(number_local_iterations_guest, number_local_iterations_host)]
+
+    lr_list = [0.001]
+    n_local_iter_list = [(6, 6)]  # [(number_local_iterations_guest, number_local_iterations_host)]
 
     for is_parallel in is_parallel_list:
         for lr in lr_list:
             for n_local in n_local_iter_list:
-                show_fig = False if n_experiments > 1 else True
+                if show_fig: show_fig = False if n_experiments > 1 else True
                 for i in range(n_experiments):
-                    print("communication_efficient_experiment: {0} with is_async: {1}, lr: {2}, n_local: {3}".format(i, is_parallel, lr, n_local))
-                    Xa_train, Xb_train, y_train = shuffle(Xa_train, Xb_train, y_train)
-                    Xa_test, Xb_test, y_test = shuffle(Xa_test, Xb_test, y_test)
+                    print("[INFO] communication_efficient_experiment: {0} with is_async: {1}, lr: {2}, n_local: {3}"
+                          .format(i, is_parallel, lr, n_local))
+                    # Xa_train, Xb_train, y_train = shuffle(Xa_train, Xb_train, y_train)
+                    # Xa_test, Xb_test, y_test = shuffle(Xa_test, Xb_test, y_test)
                     train = [Xa_train, Xb_train, y_train]
                     test = [Xa_test, Xb_test, y_test]
-                    run_experiment(train_data=train, test_data=test, output_directory_name=folder_name,
+                    run_experiment(train_data=train, test_data=test, output_directory_name=output_dir_name,
                                    n_local=n_local, batch_size=batch_size, learning_rate=lr, epoch=epoch,
                                    is_parallel=is_parallel, apply_proximal=apply_proximal, proximal_lbda=proximal_lbda,
-                                   show_fig=show_fig)
+                                   is_debug=is_debug, show_fig=show_fig, verbose=verbose)

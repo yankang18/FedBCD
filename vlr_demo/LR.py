@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import metrics
 
+from store_utils import get_experimental_result_dir
+
 home_dir = os.path.split(os.path.realpath(__file__))[0]
 sys.path.append(os.path.join(home_dir))
 
@@ -252,10 +254,10 @@ if __name__ == "__main__":
                                                                                                      x_test_b.shape,
                                                                                                      y_train.shape,
                                                                                                      y_test.shape))
-    # print(y_train.shape)
 
-    # path = "./result/LR/asyn-cyclic/n_local_5/batch64/"
-    path = "./result/LR/cyclic/n_local_5/batch64/"
-    gradient_generator(x_train, x_test, y_train, y_test, path)
+    output_dir_name = "/vlr_demo/result/lr_cyclic/"
+    file_full_name = get_experimental_result_dir(output_dir_name)
+
+    gradient_generator(x_train, x_test, y_train, y_test, output_dir_name)
     print("total time:", (time.time() - t), "s")
-    plot_curve(path)
+    plot_curve(output_dir_name)

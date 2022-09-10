@@ -1,7 +1,8 @@
-import numpy as np
 import time
+
+import numpy as np
+
 from models.base_model import BaseModel
-from models.optimizer import Optimizer
 
 """
     The following three classes are to mimic the federated learning procedure between two parties. They are solely for 
@@ -33,25 +34,26 @@ def glorot_normal(fan_in, fan_out):
     return np.random.normal(0, stddev, (fan_in, fan_out))
 
 
-# TODO: this function is not numerical stable. Fix it when having time.
+# TODO: this function is not numerical stable.
 def sigmoid(x):
     return 1.0 / (1.0 + np.exp(-x))
 
 
 class VFLGuestModel(object):
 
-    def __init__(self, local_model, learning_rate, n_iter=1, lbda=0.01, is_ave=False, optimizer="adam",
-                 apply_proximal=False, proximal_lbda=0.1):
+    def __init__(self, local_model, learning_rate, n_iter=1, reg_lbda=0.01, apply_proximal=False, proximal_lbda=0.1,
+                 is_debug=False, verbose=False):
         super(VFLGuestModel, self).__init__()
         self.localModel = local_model
         self.feature_dim = local_model.get_features_dim()
         self.learning_rate = learning_rate
-        self.lbda = lbda
+        self.reg_lbda = reg_lbda
         self.n_iter = n_iter
-        self.is_ave = is_ave
-        self.optimizer = Optimizer(learning_rate=learning_rate, opt_method_name=optimizer)
         self.learning_rate_decay = None
-        self.is_debug = False
+        self.is_debug = is_debug
+        self.verbose = verbose
+
+        self.guest_id = self.localModel.get_ID()
 
         # state
         self.W = self._init_weights(self.feature_dim + 1, 1)
@@ -59,10 +61,9 @@ class VFLGuestModel(object):
         self.parties_grad_component_list = []
         self.parties_loss_component_list = []
         self.parties_loss_reg_term_list = []
-        self.collected_common_grad = None
         self.current_global_step = None
 
-        # following hyper_parameters are about applying proximal
+        # following hyper_parameters are relevant to applying proximal term
         self.apply_proximal = apply_proximal
         self.reserved_W = None
         self.reserved_local_model_param = None
@@ -75,7 +76,6 @@ class VFLGuestModel(object):
     def set_batch(self, X, y, global_step):
         self.X = X
         self.y = y
-        self.collected_common_grad = np.zeros((self.X.shape[0], 1))
         self.current_global_step = global_step
 
     def set_learning_rate_decay_func(self, learning_rate_decay_func):
@@ -96,11 +96,8 @@ class VFLGuestModel(object):
         self._compute_common_gradient_and_loss(y)
         self._update_local_model(X, y)
         self._update_federated_layer_model()
-        # self._update_federated_layer_model()
-        # self._update_local_model(X, y)
 
     def predict(self, X, component_list):
-        # self.K_Z = self.localModel.transform(X)
         temp_K_Z = self.localModel.transform(X)
         bias = np.ones((temp_K_Z.shape[0], 1))
         self.K_Z = np.concatenate([temp_K_Z, bias], axis=1)
@@ -118,19 +115,16 @@ class VFLGuestModel(object):
             self.parties_loss_reg_term_list.append(party_component[2])
 
     def fit_one(self):
+        if self.verbose: print("=>    [INFO] Guest-{} local iteration: 1".format(self.guest_id))
         self.fit(self.X, self.y)
 
     def fit_additional_iterations(self):
-        # n_iter = self.n_iter if is_seq else self.n_iter - 1
-        # iter_for_reserve = 1 if is_seq else 0
-        n_iter = self.n_iter - 1
+        additional_n_iter = self.n_iter - 1
         iter_for_reserve = 0
-        print("@ number of local iterations: {0}".format(self.n_iter))
-        for i in range(n_iter):
-
-            # when applying proximal and it is the second iteration, we preserve the model of the first iteration
+        for i in range(additional_n_iter):
+            if self.verbose: print("=>    [INFO] Guest-{} local iteration: {}".format(self.guest_id, i + 2))
             if self.apply_proximal and i == iter_for_reserve:
-                print("@ Guest local iteration {0} (actual {1}), and reserve model".format(i, i + 1))
+                if self.is_debug: print("[DEBUG] Guest reserves model at local iteration:{}".format(i + 2))
                 self._reserve_model_parameters()
                 self._set_proximal_saved(True)
 
@@ -150,28 +144,24 @@ class VFLGuestModel(object):
         self._proximal_saved = _proximal_saved
 
     def _compute_common_gradient_and_loss(self, y):
-        # if self.A_U.shape[0] != self.K_U.shape[0] or self.B_U.shape[0] != self.K_U.shape[0]:
-        #     raise Exception("the first dim of K_U, A_U and B_U should be the same")
         U = self.K_U
-        loss_reg_term_sum = np.squeeze(0.5 * self.lbda * np.dot(np.transpose(self.W), self.W))
+        loss_reg_term_sum = np.squeeze(0.5 * self.reg_lbda * np.dot(np.transpose(self.W), self.W))
         for grad_comp, loss_reg_term in zip(self.parties_grad_component_list, self.parties_loss_reg_term_list):
             U = U + grad_comp
             loss_reg_term_sum = loss_reg_term_sum + loss_reg_term
 
         yU = 0.5 * y * U
-        # print("y*y {0}, sum {1}".format(y * y, np.sum(y * y)))
         self.common_grad = 0.5 * y * (yU - 1.0) / (y.shape[0] * self.feature_dim)
-
         self.partial_common_grad = 0.5 * (0.5 * self.K_U - y) / (y.shape[0] * self.feature_dim)
+
+        # print("y*y {0}, sum {1}".format(y * y, np.sum(y * y)))
         # self.common_grad = 0.5 * y * (yU - 1.0) / y.shape[0]
 
         if self.is_debug:
-            print("y shape: {0}".format(y.shape))
-            print("U shape: {0}".format(U.shape))
-            print("yU shape: {0}".format(yU.shape))
-            print("common_grad shape: {0}".format(self.common_grad.shape))
-
-        self.collected_common_grad += self.common_grad
+            print("[DEBUG] y shape: {0}".format(y.shape))
+            print("[DEBUG] U shape: {0}".format(U.shape))
+            print("[DEBUG] yU shape: {0}".format(yU.shape))
+            print("[DEBUG] common_grad shape: {0}".format(self.common_grad.shape))
 
         # TODO: this implementation is not compatible with HE
         loss_1 = np.mean(np.log(2) - 0.5 * yU + 0.125 * np.square(U))
@@ -180,8 +170,6 @@ class VFLGuestModel(object):
 
     def send_gradients(self):
         common_grad = self.common_grad
-        # if self.is_ave:
-        #     common_grad = self.collected_common_grad / self.n_iter
         return common_grad, self.partial_common_grad
 
     def _update_federated_layer_model(self):
@@ -196,9 +184,9 @@ class VFLGuestModel(object):
                 grad_j += self.common_grad[i, 0] * self.K_Z[i, j]
             W_grad.append(grad_j)
 
-        W_grad = np.array(W_grad).reshape(self.W.shape) + self.lbda * self.W
+        W_grad = np.array(W_grad).reshape(self.W.shape) + self.reg_lbda * self.W
         if self._is_proximal_saved():
-            print("@ Guest is applying proximal")
+            if self.is_debug: print("[DEBUG] Guest is applying proximal")
             proximal_reg = self.proximal_lbda * (self.W - self.reserved_W)
             W_grad = W_grad + proximal_reg
 
@@ -209,20 +197,16 @@ class VFLGuestModel(object):
 
         self.W = self.W - learning_rate * W_grad
         # self.W -= self.optimizer.apply_gradients(W_grad)
-
         # W_grad = np.array(W_grad).reshape(self.W.shape) + self.lbda * self.W
         # self.W = self.W - self.learning_rate * W_grad
-
         # print("common_grad: ", self.common_grad.shape[0])
         # W_grad = np.array(W_grad).reshape(self.W.shape) + self.lbda * self.W / self.common_grad.shape[0]
         # self.W -= self.optimizer.apply_gradients(W_grad)
 
     def _update_local_model(self, X, y):
-        # print("self.common_grad shape", self.common_grad.shape)
-        # print("self.W shape", self.W.shape)
         W = self.W[:self.feature_dim]
         back_grad = np.matmul(self.common_grad, np.transpose(W))
-        # bp_loss = self.localModel.backpropogate(X, y, back_grad)
+
         if self._is_proximal_saved():
             self.localModel.backpropogate(X, y, back_grad, True, self.reserved_local_model_param)
         else:
@@ -234,23 +218,22 @@ class VFLGuestModel(object):
     def get_local_iteration(self):
         return self.n_iter
 
-    def get_is_average(self):
-        return self.is_ave
-
 
 class VFLHostModel(PartyModelInterface):
 
-    def __init__(self, local_model, learning_rate=0.01, n_iter=1, lbda=0.01, optimizer="adam",
-                 apply_proximal=False, proximal_lbda=0.1):
+    def __init__(self, local_model, learning_rate=0.01, n_iter=1, reg_lbda=0.01, apply_proximal=False,
+                 proximal_lbda=0.1, is_debug=False, verbose=False):
         super(VFLHostModel, self).__init__()
         self.localModel = local_model
         self.feature_dim = local_model.get_features_dim()
         self.learning_rate = learning_rate
-        self.lbda = lbda
+        self.reg_lbda = reg_lbda
         self.n_iter = n_iter
-        self.optimizer = Optimizer(learning_rate=learning_rate, opt_method_name=optimizer)
         self.learning_rate_decay = None
-        self.is_debug = False
+        self.is_debug = is_debug
+        self.verbose = verbose
+
+        self.host_id = self.localModel.get_ID()
 
         self.W = self._init_weights(self.feature_dim, 1)
         self.X = None
@@ -259,7 +242,7 @@ class VFLHostModel(PartyModelInterface):
         self.partial_common_grad = None
         self.current_global_step = None
 
-        # following hyper_parameters are about applying proximal
+        # following hyper_parameters are relevant to applying proximal
         self.apply_proximal = apply_proximal
         self.reserved_W = None
         self.reserved_local_model_param = None
@@ -282,34 +265,28 @@ class VFLHostModel(PartyModelInterface):
 
     def _forward_computation(self, X):
         self.A_Z = self.localModel.transform(X)
-        # print("A_Z:", self.A_Z.shape)
         self.A_U = np.dot(self.A_Z, self.W)
-        # print("A_U:", self.A_U.shape)
         self.A_U_2 = np.square(self.A_U)
 
     def _fit(self, X, y):
         self._update_local_model(X, y)
         self._update_federated_layer_model()
-        # self._receive_common_gradients(common_grad)
-        # self._update_federated_layer_model()
-        # self._update_local_model(X, y)
 
     def receive_gradients(self, gradients):
         self.common_grad = gradients[0]
         self.partial_common_grad = gradients[1]
 
         if self.is_debug:
-            print("common_grad : {0} with shape {1}".format(self.common_grad[0], self.common_grad.shape))
-            print("partial_common_grad : {0} with shape {1}".format(self.partial_common_grad[0],
-                                                                    self.partial_common_grad.shape))
+            print("[DEBUG] common_grad : {0} with shape {1}".format(self.common_grad[0], self.common_grad.shape))
+            print("[DEBUG] partial_common_grad : {0} with shape {1}".format(self.partial_common_grad[0],
+                                                                            self.partial_common_grad.shape))
 
-        print("@ number of local iterations: {0}".format(self.n_iter))
         self._set_applying_proximal(False)
         for i in range(self.n_iter):
-
+            if self.verbose: print("=>    [INFO] Host-{} local iteration: {}".format(self.host_id, i + 1))
             # when applying proximal and it is the second iteration, we preserve the model of the first iteration
             if self.apply_proximal and i == 1:
-                print("@ Host local iteration {0}, and reserve model".format(i))
+                if self.is_debug: print("[DEBUG] Host reserves model at local iteration:{}".format(i + 1))
                 self._reserve_model_parameters()
                 self._set_applying_proximal(True)
 
@@ -317,18 +294,15 @@ class VFLHostModel(PartyModelInterface):
 
             # if it is not the last iteration, computes forward pass and common grad
             if i != self.n_iter - 1:
-                print("@ Host is not in last local iter, computes forward pass and common grad")
+                if self.is_debug: print("[DEBUG] Host is not at last local iter, and"
+                                        " computes forward pass and common grad.")
                 self._forward_computation(self.X)
                 self._compute_common_gradient()
             else:
-                print("@ Host is in the last local iter")
+                if self.is_debug: print("[DEBUG] Host is at the last local iter.")
 
     def _compute_common_gradient(self):
-        # self.partial_common_grad = (0.5 * 0.5 * self.K_U - 0.5 * y) / (y.shape[0] * self.feature_dim)
-
-        if self.is_debug:
-            print("self.A_U.shape[0]:", self.A_U.shape[0])
-
+        if self.is_debug: print("[DEBUG] self.A_U.shape[0]:", self.A_U.shape[0])
         self.common_grad = self.partial_common_grad + 0.5 * 0.5 * self.A_U / (self.A_U.shape[0] * 50)
 
     def _reserve_model_parameters(self):
@@ -343,7 +317,7 @@ class VFLHostModel(PartyModelInterface):
 
     def send_components(self):
         self._forward_computation(self.X)
-        loss_reg_term = np.squeeze(0.5 * self.lbda * np.dot(np.transpose(self.W), self.W))
+        loss_reg_term = np.squeeze(0.5 * self.reg_lbda * np.dot(np.transpose(self.W), self.W))
         # if self._is_applying_proximal():
         #     proximal_loss = 0.5 * self.proximal_lbda * np.sum(np.square(self.W - self.reserved_W))
         #     loss_reg_term = loss_reg_term + proximal_loss
@@ -361,9 +335,9 @@ class VFLHostModel(PartyModelInterface):
                 grad_j += self.common_grad[i, 0] * self.A_Z[i, j]
             W_grad.append(grad_j)
 
-        W_grad = np.array(W_grad).reshape(self.W.shape) + self.lbda * self.W
+        W_grad = np.array(W_grad).reshape(self.W.shape) + self.reg_lbda * self.W
         if self._is_applying_proximal():
-            print("@ Host is applying proximal")
+            if self.is_debug: print("[DEBUG] Host is applying proximal")
             proximal_reg = self.proximal_lbda * (self.W - self.reserved_W)
             W_grad = W_grad + proximal_reg
 
@@ -373,8 +347,8 @@ class VFLHostModel(PartyModelInterface):
             else self.learning_rate
 
         self.W = self.W - learning_rate * W_grad
-        # self.W -= self.optimizer.apply_gradients(W_grad)
 
+        # self.W -= self.optimizer.apply_gradients(W_grad)
         # W_grad = np.array(W_grad).reshape(self.W.shape) + self.lbda * self.W / self.common_grad.shape[0]
         # self.W -= self.optimizer.apply_gradients(W_grad)
 
@@ -393,13 +367,14 @@ class VFLHostModel(PartyModelInterface):
         return self.n_iter
 
 
-class VerticalMultiplePartyLogisticRegressionFederatedLearning(BaseModel):
+class VerticalMultiplePartyFederatedLearning(BaseModel):
 
-    def __init__(self, party_A: VFLGuestModel, main_party_id="K"):
-        super(VerticalMultiplePartyLogisticRegressionFederatedLearning, self).__init__()
+    def __init__(self, party_a: VFLGuestModel, main_party_id="K", verbose=False):
+        super(VerticalMultiplePartyFederatedLearning, self).__init__()
         self.main_party_id = main_party_id
-        self.party_a = party_A
+        self.party_a = party_a
         self.party_dict = dict()
+        self.verbose = verbose
 
     def get_main_party_id(self):
         return self.main_party_id
@@ -407,37 +382,31 @@ class VerticalMultiplePartyLogisticRegressionFederatedLearning(BaseModel):
     def add_party(self, *, id, party_model):
         self.party_dict[id] = party_model
 
-    # def set_learning_rate(self, learning_rate):
-    #     self.party_a.set_learning_rate(learning_rate)
-    #     for _, party in self.party_dict.items():
-    #         party.set_learning_rate(learning_rate)
-
     def fit(self, X_A, y, party_X_dict, global_step):
-        print("------ fit using sequential scheme ------")
 
         self.party_a.set_batch(X_A, y, global_step)
 
         for id, party_X in party_X_dict.items():
             self.party_dict[id].set_batch(party_X, global_step)
 
-        print("=> Guest receive immediate result from hosts")
+        if self.verbose: print("=> [INFO] Guest receive immediate result from hosts")
         comp_list = []
         for party in self.party_dict.values():
             comp_list.append(party.send_components())
         self.party_a.receive_components(component_list=comp_list)
 
         start_time = time.time()
-        print("=> Guest computes loss")
+        if self.verbose: print("=> [INFO] Guest computes loss")
         self.party_a.fit_one()
         loss = self.party_a.get_loss()
 
-        print("=> Guest does local update")
+        if self.verbose: print("=> [INFO] Guest performs additional local updates")
         self.party_a.fit_additional_iterations()
 
-        print("=> Guest sends out common grad")
+        if self.verbose: print("=> [INFO] Guest sends out common grad")
         grad_result = self.party_a.send_gradients()
 
-        print("=> Hosts receive common grad from guest and do local updates")
+        if self.verbose: print("=> [INFO] Hosts receive common grad from guest and do local updates")
         for party in self.party_dict.values():
             party.receive_gradients(grad_result)
 
@@ -447,7 +416,6 @@ class VerticalMultiplePartyLogisticRegressionFederatedLearning(BaseModel):
         return loss, spend_time
 
     def fit_parallel(self, X_A, y, party_X_dict, global_step):
-        print("------ fit using parallel scheme ------")
 
         self.party_a.set_batch(X_A, y, global_step)
 
@@ -455,24 +423,24 @@ class VerticalMultiplePartyLogisticRegressionFederatedLearning(BaseModel):
             self.party_dict[id].set_batch(party_X, global_step)
 
         # collect intermediate gradient and loss components from all parties
-        print("=> Guest receive immediate result from hosts")
+        if self.verbose: print("=> [INFO] Guest receive immediate result from hosts")
         comp_list = []
         for party in self.party_dict.values():
             comp_list.append(party.send_components())
         self.party_a.receive_components(component_list=comp_list)
 
         start_time = time.time()
-        print("=> Guest sends out common grad and computes loss")
+        if self.verbose: print("=> [INFO] Guest sends out common grad and computes loss")
         self.party_a.fit_one()
         grad_result = self.party_a.send_gradients()
         loss = self.party_a.get_loss()
 
-        print("=> Guest does local update")
+        if self.verbose: print("=> [INFO] Guest performs additional local updates")
         self.party_a.fit_additional_iterations()
 
         end_time = time.time()
 
-        print("=> Hosts receive common grad from guest and do local updates")
+        if self.verbose: print("=> [INFO] Hosts receive common grad from guest and do local updates")
         for party in self.party_dict.values():
             party.receive_gradients(grad_result)
 
@@ -495,6 +463,3 @@ class VerticalMultiplePartyLogisticRegressionFederatedLearning(BaseModel):
         for party in self.party_dict.values():
             local_iter_list.append(party.get_local_iteration())
         return local_iter_list
-
-    def is_average(self):
-        return self.party_a.get_is_average()

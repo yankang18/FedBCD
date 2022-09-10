@@ -6,6 +6,7 @@ class MockModel(BaseModel):
     def __init__(self, an_id):
         super(MockModel, self).__init__()
         self.id = str(an_id)
+        self.hidden_dim = None
 
     def build(self, hidden_dim):
         self.hidden_dim = hidden_dim
