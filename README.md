@@ -11,7 +11,7 @@ We use four datasets for experiments.
 - NUSWIDE
 - MIMIC-III
 
-You can adopt any dataset to run the code, but you have to prepare the code by yourself. 
+You can adopt any dataset to run the code. 
 
 ## Getting Started
 
@@ -32,6 +32,8 @@ This work was started in 2019, and we adopted TensorFlow 1.13 back then. You may
 - `run_vfl_cnn_two_party_demo.py` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a simple CNN model. 
 
 For now, you can change the hyperparameters in `run_vfl_aue_two_party_demo.py` or `run_vfl_cnn_two_party_demo.py`, and run either file directly to start the training. We will add support for the command line later.
+
+For completeness, we include the FTL algorithm (i.e., plain_ftl.py and run_plain_ftl_demo.py) in this repo. However, the FTL algorithm in this repo does not support FedBCD. You can find the FTL with FedBCD implemented in FATE [FTL](https://github.com/FederatedAI/FATE/blob/master/python/federatedml/transfer_learning/hetero_ftl/ftl_guest.py#L314).
 
 ## Citation 
 

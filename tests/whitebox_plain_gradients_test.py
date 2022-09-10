@@ -1,4 +1,4 @@
-from plain_ftl import PlainFTLGuestModel, PlainFTLHostModel
+from vnn_demo.plain_ftl import PlainFTLGuestModel, PlainFTLHostModel
 from tests.fake_models import FakeAutoencoder
 
 import numpy as np

@@ -5,7 +5,7 @@ from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 import config
 from datasets.data_util import load_data, split_data_combined, series_plot
 from models.autoencoder import Autoencoder
-from plain_ftl import PlainFTLHostModel, PlainFTLGuestModel, LocalPlainFederatedTransferLearning
+from vnn_demo.plain_ftl import PlainFTLHostModel, PlainFTLGuestModel, LocalPlainFederatedTransferLearning
 
 if __name__ == '__main__':
 
