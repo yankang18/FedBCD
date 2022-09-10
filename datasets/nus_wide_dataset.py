@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
+from config import data_dir
+
 
 def get_top_k_labels(data_dir, top_k=5):
     data_path = "NUS_WIDE/Groundtruth/AllLabels"
@@ -181,7 +183,7 @@ def load_three_party_data(data_dir, selected_labels, neg_label=-1, n_samples=-1)
 
 
 def prepare_party_data(src_data_folder, des_data_folder, selected_labels, neg_label, n_samples, is_three_party=False):
-    print("# preparing data ...")
+    print("[INFO] preparing data ...")
 
     train_data_list, test_data_list = load_three_party_data(src_data_folder, selected_labels,
                                                             neg_label=neg_label, n_samples=n_samples) \
@@ -210,7 +212,7 @@ def prepare_party_data(src_data_folder, des_data_folder, selected_labels, neg_la
     for test_data, test_data_full_name in zip(test_data_list, test_data_full_name_list):
         np.savetxt(fname=test_data_full_name, X=test_data, delimiter=',')
 
-    print("# prepare data finished!")
+    print("[INFO] prepare data finished!")
 
 
 def get_data_folder_name(sel_lbls, is_three_party):
@@ -258,23 +260,19 @@ def load_prepared_parties_data(data_dir, sel_lbls, load_three_party):
 
 if __name__ == '__main__':
 
-    data_dir = "../data/"
-    # if not os.path.exists(data_dir):
-    #     os.mkdir(data_dir)
+    # data folder where you store the NUSWIDE data
+    src_data_dir = "/Users/yankang/Documents/dataset/"
 
-    # sel = get_top_k_labels(data_dir=data_dir, top_k=10)
-    # print("sel", sel)
-    # ['sky', 'clouds', 'person', 'water', 'animal', 'grass', 'buildings', 'window', 'plants', 'lake']
+    # data folder where you put the processed data
+    des_data_dir = data_dir
 
-    # sel_lbls = ['person', 'water', 'animal', 'grass', 'buildings']
     sel_lbls = ["person", "animal"]
-    # if no prepare three party data, then it is going to prepare two party data
     prepare_three_party = False
-    print("prepare {0} party data".format("three" if prepare_three_party else "two"))
+    print("[INFO] prepare {0} party data".format("three" if prepare_three_party else "two"))
     folder_name = get_data_folder_name(sel_lbls, is_three_party=prepare_three_party)
-    folder_full_name = data_dir + folder_name + "/"
-    print("folder_full_name:" + folder_full_name)
+    folder_full_name = des_data_dir + folder_name + "/"
+    print("[INFO] save data to {}".format(folder_full_name))
     if not os.path.exists(folder_full_name):
-        os.mkdir(folder_full_name)
-    prepare_party_data(src_data_folder=data_dir, des_data_folder=folder_full_name, selected_labels=sel_lbls,
+        os.makedirs(folder_full_name)
+    prepare_party_data(src_data_folder=src_data_dir, des_data_folder=folder_full_name, selected_labels=sel_lbls,
                        neg_label=0, n_samples=20000, is_three_party=prepare_three_party)

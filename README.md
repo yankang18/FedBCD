@@ -5,10 +5,10 @@ We introduce a novel federated learning framework allowing multiple parties havi
 
 ## Dataset
 
-We use four datasets for experiments. 
+We use three datasets for experiments. 
 
-- MNIST
-- NUSWIDE
+- [MNIST](https://www.kaggle.com/competitions/digit-recognizer/data)
+- [NUSWIDE](https://lms.comp.nus.edu.sg/wp-content/uploads/2019/research/nuswide/NUS-WIDE.html)
 - MIMIC-III
 
 You can adopt any dataset to run the code. 
