@@ -7,26 +7,26 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.utils import shuffle
-
+from config import data_dir
 from models.cnn import ConvolutionLayer, ReluActivationLayer, SimpleCNN
 from models.learning_rate_decay import sqrt_learning_rate_decay
 from models.regularization import EarlyStoppingCheckPoint
 from store_utils import save_experimental_results
-from vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
-from vnn_demo.vfl_fixture import FederatedLearningFixture
+from vnn_demo.vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
+from vnn_demo.vfl_learner import VerticalFederatedLearningLearner
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 home_dir = os.path.split(os.path.realpath(__file__))[0]
 sys.path.append(os.path.join(home_dir))
 
 
-def getKaggleMINST():
+def getKaggleMINST(data_dir):
     # MNIST datasets:
     # column 0 is labels
     # column 1-785 is datasets, with values 0 .. 255
     # total size of CSV: (42000, 1, 28, 28)
 
-    train = pd.read_csv('../data/MINST/train.csv')
+    train = pd.read_csv(data_dir + '/MINST/train.csv')
     # test = pd.read_csv('../data/MINST/test.csv')
     train = train.to_numpy()
     print("[INFO] train data shape:{0}".format(train.shape))
@@ -163,7 +163,6 @@ def benchmark_test(X_train_left, X_train_right, Y_train, X_test_left, X_test_rig
 def compute_accuracy(y_targets, y_preds):
     corr_count = 0
     total_count = len(y_preds)
-    print("# of labels:", total_count)
     for y_p, y_t in zip(y_preds, y_targets):
         if (y_p <= 0.5 and y_t == -1) or (y_p > 0.5 and y_t == 1):
             corr_count += 1
@@ -242,8 +241,8 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
     test_data = {federated_learning.get_main_party_id(): {"X": X_test_b_left, "Y": Ytest_b},
                  "party_list": {party_B_id: X_test_b_right}}
 
-    fl_fixture = FederatedLearningFixture(federated_learning)
-    experiment_result = fl_fixture.fit(train_data=train_data,
+    fl_learner = VerticalFederatedLearningLearner(federated_learning)
+    experiment_result = fl_learner.fit(train_data=train_data,
                                        test_data=test_data,
                                        is_parallel=is_parallel,
                                        epochs=epoch,
@@ -257,7 +256,7 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
 
 if __name__ == '__main__':
 
-    Xtrain, Ytrain, Xtest, Ytest = getKaggleMINST()
+    Xtrain, Ytrain, Xtest, Ytest = getKaggleMINST(data_dir)
     Xtrain = Xtrain.astype(np.float32)
     Xtest = Xtest.astype(np.float32)
 
@@ -286,6 +285,10 @@ if __name__ == '__main__':
 
     print("################################ Build Federated Models ############################")
 
+    is_debug = False
+    verbose = False
+    show_fig = False
+
     output_dir_name = "/vnn_demo/result/cnn_two_party/"
     n_experiments = 1
     apply_proximal = True
@@ -293,17 +296,13 @@ if __name__ == '__main__':
     batch_size = 256
     epoch = 2
 
-    is_debug = False
-    verbose = False
-    show_fig = False
-
     is_parallel_list = [True]
 
     # lr_list = [1e-03]
     # n_local_iter_list = [(1, 1)]  # [(number_local_iterations_guest, number_local_iterations_host)]
 
     lr_list = [1e-04]
-    n_local_iter_list = [(4, 4)]  # [(number_local_iterations_guest, number_local_iterations_host)]
+    n_local_iter_list = [(5, 5)]  # [(number_local_iterations_guest, number_local_iterations_host)]
 
     for is_parallel in is_parallel_list:
         for lr in lr_list:

@@ -3,12 +3,13 @@ import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 
+from config import data_dir
 from datasets.medical_dataset import load_vertical_medical_data
 from models.autoencoder import Autoencoder
 from models.learning_rate_decay import sqrt_learning_rate_decay
 from store_utils import save_experimental_results
-from vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
-from vnn_demo.vfl_fixture import FederatedLearningFixture
+from vnn_demo.vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
+from vnn_demo.vfl_learner import VerticalFederatedLearningLearner
 
 
 def benchmark_test(X_train, X_test, y_train, y_test, party_name=""):
@@ -81,7 +82,7 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
 
     print("################################ Train Federated Models ############################")
 
-    fl_fixture = FederatedLearningFixture(federatedLearning)
+    fl_learner = VerticalFederatedLearningLearner(federatedLearning)
 
     train_data = {federatedLearning.get_main_party_id(): {"X": Xa_train, "Y": y_train},
                   "party_list": {party_B_id: Xb_train, party_C_id: Xc_train}}
@@ -89,7 +90,7 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
     test_data = {federatedLearning.get_main_party_id(): {"X": Xa_test, "Y": y_test},
                  "party_list": {party_B_id: Xb_test, party_C_id: Xc_test}}
 
-    experiment_result = fl_fixture.fit(train_data=train_data,
+    experiment_result = fl_learner.fit(train_data=train_data,
                                        test_data=test_data,
                                        is_parallel=is_parallel,
                                        epochs=epoch,
@@ -115,7 +116,7 @@ if __name__ == '__main__':
     # Xa_train, Xb_train, Xc_train, y_train = train
     # Xa_test, Xb_test, Xc_test, y_test = test
 
-    data_dir = "../data/vertical_medical_data/"
+    data_dir = data_dir + "/vertical_medical_data/"
     train, test = load_vertical_medical_data(data_dir)
     Xa_train, Xb_train, Xc_train, y_train = train
     Xa_test, Xb_test, Xc_test, y_test = test
@@ -138,6 +139,10 @@ if __name__ == '__main__':
     benchmark_test(X_train, X_test, y_train_1d, y_test_1d, "All")
 
     print("################################ Build Federated Models ############################")
+    show_fig = False if n_experiments > 1 else True
+    is_debug = False
+    verbose = False
+
     output_dir_name = "/vnn_demo/result/auc_three_party/"
 
     lr = 0.001
@@ -151,9 +156,7 @@ if __name__ == '__main__':
 
     is_parallel = True
     n_experiments = 1
-    show_fig = False if n_experiments > 1 else True
-    is_debug = False
-    verbose = False
+
     for i in range(n_experiments):
         print("[INFO] communication_efficient_experiment: {0}".format(i))
         # Xa_train, Xb_train, Xc_train, y_train = shuffle(Xa_train, Xb_train, Xc_train, y_train)

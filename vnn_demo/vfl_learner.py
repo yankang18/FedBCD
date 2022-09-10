@@ -3,7 +3,7 @@ import tensorflow as tf
 from sklearn.metrics import roc_auc_score
 
 from datasets.data_util import convert_to_pos_neg_labels
-from vfl import VerticalMultiplePartyFederatedLearning
+from vnn_demo.vfl import VerticalMultiplePartyFederatedLearning
 
 
 def compute_correct_prediction(*, y_targets, y_prob_preds, threshold=0.5):
@@ -25,7 +25,7 @@ def compute_correct_prediction(*, y_targets, y_prob_preds, threshold=0.5):
     return np.array(y_hat_lbls), [pred_pos_count, pred_neg_count, correct_count]
 
 
-class FederatedLearningFixture(object):
+class VerticalFederatedLearningLearner(object):
 
     def __init__(self, federated_learning: VerticalMultiplePartyFederatedLearning):
         self.federated_learning = federated_learning

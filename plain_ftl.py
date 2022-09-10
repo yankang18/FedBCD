@@ -1,7 +1,7 @@
 import numpy as np
 
 from models.base_model import BaseModel
-from vfl import PartyModelInterface
+from vnn_demo.vfl import PartyModelInterface
 
 
 def sigmoid(x):

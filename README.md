@@ -5,17 +5,31 @@ We introduce a novel federated learning framework allowing multiple parties havi
 
 ## Dataset
 
-### TBD
+We use four datasets for experiments. 
+
+- MNIST
+- NUSWIDE
+- MIMIC-III
+
+You can adopt any dataset to run the code, but you have to prepare the code by yourself. 
 
 ## Getting Started
 
-### TBD
+For convenience and quick experimental feedback, we simulate vertical federated learning without using any federated learning/distributed learning coding framework (e.g., FedML and FATE). You can straightforwardly adapt the code in this repo to these frameworks. 
 
 ## Requirements
 
-### TBD
+This work was started in 2019, and we adopted TensorFlow 1.13 back then. You may either install TF 1.13 or transform our code to TF 2.0 or Pytorch.  
 
 ## Run example
+
+'vfl_learner' is the starting point for performing vertical federated learning training (no difference from the conventional neural network training).
+
+'vfl.py' includes the code for simulating guest and host parties. It also includes the vertical federated learning training procedure involving a guest and multiple hosts.
+
+'run_vfl_aue_two_party_demo' is running the experiments for a two-party VFL scenario, where both the guest and host are adopting one layer FC neural network model. 
+
+'run_vfl_cnn_two_party_demo' is running the experiments for a two-party VFL scenario, where both the guest and host adopt a simple CNN model. 
 
 ### TBD
 

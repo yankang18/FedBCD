@@ -3,12 +3,13 @@ import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support, roc_auc_score
 
+from config import data_dir
 from datasets.nus_wide_dataset import load_prepared_parties_data
 from models.autoencoder import Autoencoder
 from models.learning_rate_decay import sqrt_learning_rate_decay
-from vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
-from vnn_demo.vfl_fixture import FederatedLearningFixture
 from store_utils import save_experimental_results
+from vnn_demo.vfl import VFLHostModel, VFLGuestModel, VerticalMultiplePartyFederatedLearning
+from vnn_demo.vfl_learner import VerticalFederatedLearningLearner
 
 
 def benchmark_test(X_train, X_test, y_train, y_test, party_name=""):
@@ -87,7 +88,7 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
 
     print("################################ Train Federated Models ############################")
 
-    fl_fixture = FederatedLearningFixture(federatedLearning)
+    fl_learner = VerticalFederatedLearningLearner(federatedLearning)
 
     train_data = {federatedLearning.get_main_party_id(): {"X": Xa_train, "Y": y_train},
                   "party_list": {party_B_id: Xb_train}}
@@ -95,7 +96,7 @@ def run_experiment(train_data, test_data, output_directory_name, n_local, batch_
     test_data = {federatedLearning.get_main_party_id(): {"X": Xa_test, "Y": y_test},
                  "party_list": {party_B_id: Xb_test}}
 
-    experiment_result = fl_fixture.fit(train_data=train_data,
+    experiment_result = fl_learner.fit(train_data=train_data,
                                        test_data=test_data,
                                        is_parallel=is_parallel,
                                        epochs=epoch,
@@ -112,7 +113,6 @@ if __name__ == '__main__':
 
     print("################################ Prepare Data ############################")
     for_three_party = False
-    data_dir = "../data/"
     # class_lbls = ['person', 'water', 'animal', 'grass', 'buildings']
     # class_lbls = ['sky', 'clouds', 'person', 'water']
     class_lbls = ['person', 'animal']
@@ -139,6 +139,9 @@ if __name__ == '__main__':
     # benchmark_test(X_train, X_test, y_train_1d, y_test_1d, "All")
 
     print("################################ Build Federated Models ############################")
+    is_debug = False
+    verbose = False
+    show_fig = False
 
     output_dir_name = "/vnn_demo/result/auc_two_party/"
     n_experiments = 1
@@ -146,10 +149,6 @@ if __name__ == '__main__':
     proximal_lbda = 3.0
     batch_size = 256
     epoch = 10
-
-    is_debug = False
-    verbose = False
-    show_fig = False
 
     is_parallel_list = [True]
 

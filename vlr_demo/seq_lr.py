@@ -5,7 +5,7 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn import metrics
-
+from config import data_dir
 from store_utils import get_experimental_result_dir
 
 home_dir = os.path.split(os.path.realpath(__file__))[0]
@@ -250,7 +250,7 @@ def gradient_generator(x_train, x_test, y_train, y_test, path):
 if __name__ == "__main__":
     t = time.time()
     # path1 = "../data/in-hospital-mortality/ihm_data/"
-    path1 = "../../data/ihm_data/"
+    path1 = data_dir + "/ihm_data/"
     x_train, x_test, y_train, y_test = load_data(path1)
     print("x_train: {}, x_test: {}, y_train: {}, y_test: {}".format(x_train.shape, x_test.shape, y_train.shape,
                                                                     y_test.shape))
