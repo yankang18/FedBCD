@@ -27,12 +27,11 @@ This work was started in 2019, and we adopted TensorFlow 1.13 back then. You may
 
 - `vfl.py` includes the code for simulating guest and host parties. It also includes the vertical federated learning training procedure involving a guest and multiple hosts.
 
-- `run_vfl_aue_two_party_demo` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a one-layer FC neural network model. 
+- `run_vfl_aue_two_party_demo.py` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a one-layer FC neural network model. 
 
-- `run_vfl_cnn_two_party_demo` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a simple CNN model. 
+- `run_vfl_cnn_two_party_demo.py` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a simple CNN model. 
 
-### TBD
-
+For now, you can change the hyperparameters in `run_vfl_aue_two_party_demo.py` or `run_vfl_cnn_two_party_demo.py`, and run either file directly to start the training. We will add support for the command line later.
 
 ## Citation 
 
