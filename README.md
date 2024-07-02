@@ -9,7 +9,7 @@ We use three datasets for experiments.
 
 - [MNIST](https://www.kaggle.com/competitions/digit-recognizer/data)
 - [NUSWIDE](https://lms.comp.nus.edu.sg/wp-content/uploads/2019/research/nuswide/NUS-WIDE.html)
-- MIMIC-III
+- [MIMIC-III](https://paperswithcode.com/dataset/mimic-iii)
 
 You can adopt any dataset to run the code. 
 
@@ -23,13 +23,13 @@ This work was started in 2019, and we adopted TensorFlow 1.13 back then. You may
 
 ## Run example
 
-- `vfl_learner` is the starting point for performing vertical federated learning training (no difference from the conventional neural network training).
+`vfl_learner` is the starting point for performing vertical federated learning training.
 
-- `vfl.py` includes the code for simulating guest and host parties. It also includes the vertical federated learning training procedure involving a guest and multiple hosts.
+`vfl.py` includes the code for simulating guest and host parties and the vertical federated learning training procedure involving a guest and multiple hosts.
 
-- `run_vfl_aue_two_party_demo.py` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a one-layer FC neural network model. 
+- `run_vfl_aue_two_party_demo.py` runs the experiments for a two-party VFL scenario, where both the guest and host adopt a one-layer FC neural network model. 
 
-- `run_vfl_cnn_two_party_demo.py` is running the experiments for a two-party VFL scenario, where both the guest and host adopt a simple CNN model. 
+- `run_vfl_cnn_two_party_demo.py` runs the experiments for a two-party VFL scenario in which both the guest and host adopt a simple CNN model. 
 
 For now, you can change the hyperparameters in `run_vfl_aue_two_party_demo.py` or `run_vfl_cnn_two_party_demo.py`, and run either file directly to start the training. We will add support for the command line later.
 
@@ -46,8 +46,8 @@ Please kindly cite our paper if you find this code useful for your research.
   journal={IEEE Transactions on Signal Processing}, 
   title={FedBCD: A Communication-Efficient Collaborative Learning Framework for Distributed Features}, 
   year={2022},
-  volume={},
+  volume={70},
   number={},
-  pages={1-12},
+  pages={4277-4290},
   doi={10.1109/TSP.2022.3198176}}
 ```
